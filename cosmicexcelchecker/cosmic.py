@@ -6,7 +6,7 @@ from _baseclass import PdExcel, UnionExcels
 from typing import Union, Dict, List
 from errors import CosmicExcelCheckerException ,IncorrectFileTypeException, RepeatedREQNumException, SheetNotFoundException, UnknownREQNumException
 from tabulate import tabulate
-from conf import CFP_SHEET_NAMES ,CFP_COLUMN_NAME, SUB_PROCESS_NAME, RS_SKIP_ROWS, RS_TOTAL_CFP_NAME, RS_WORKLOAD_NAME, RS_REQ_NUM, RS_REQ_NAME, SR_COSMIC_REQ_NAME,  SR_NONCOSMIC_REQ_NAME, SR_SUBFOLDER_NAME, SR_COSMIC_FILE_PREFIX, SR_NONCOSMIC_FILE_PREFIX, RS_QLF_COSMIC, COEFFICIENT_SHEET_NAME, COEFFICIENT_SHEET_DATA_COL_NAME
+from conf import CFP_SHEET_NAMES ,CFP_COLUMN_NAME, SUB_PROCESS_NAME, RS_SKIP_ROWS, RS_TOTAL_CFP_NAME, RS_WORKLOAD_NAME, RS_REQ_NUM, RS_REQ_NAME, SR_COSMIC_REQ_NAME,  SR_NONCOSMIC_REQ_NAME, SR_SUBFOLDER_NAME, SR_COSMIC_FILE_PREFIX, SR_NONCOSMIC_FILE_PREFIX, RS_QLF_COSMIC, COEFFICIENT_SHEET_NAME, COEFFICIENT_SHEET_DATA_COL_NAME, NONCFP_SHEET_NAMES, SR_NONCOSMIC_PROJECT_NAME, SR_NONCOSMIC_REQ_NUM
 
 import pandas as pd
 import numpy as np
@@ -76,8 +76,6 @@ class CosmicReqExcel(PdExcel):
 
             if cfp_df is not None:
                 break
-
-        # TODO: Consider for-else to improve this snippet
 
         if cfp_df is None:  # noqa
             return None
@@ -181,6 +179,86 @@ class CosmicReqExcel(PdExcel):
         except ValueError:
             return None
 
+
+class NonCosmicReqExcel(PdExcel):
+    '''
+    Implementation of Abstract class PdExcel
+    Mainly used for representing non-cosmic excel file (single requirement)
+    '''
+
+    def __init__(self, path: str):
+        '''
+                data_frames is the pd.DataFrame converted from Spreadsheet
+                log holds temporary error/warning for later usage (e.g print to terminal)
+
+                :param path: path to single requirement file
+                '''
+        self.path: str = path
+        self.data_frames: Union[Dict[str, pd.DataFrame], None] = None
+        self.log: Union[List[str], str, None] = None
+
+    def load_excel(self):
+        file_ext = self.path[self.path.rindex('.'):]
+
+        # it can be simplified to a dict[file_ext:engine] but with less readability
+        if file_ext == '.xlsx':
+            self.data_frames = pd.read_excel(self.path, sheet_name=None, engine='openpyxl')
+        elif file_ext == '.xls':
+            self.data_frames = pd.read_excel(self.path, sheet_name=None, engine='xlrd')
+        else:
+            raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for an Excel file")
+
+    def load_csv(self):
+        file_ext = self.path[self.path.rindex('.')]
+
+        if file_ext == '.csv':
+            self.data_frames = pd.read_csv(self.path)
+        else:
+            raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for a csv file")
+
+    def print_df(self):
+        '''
+        Try to print the converted pd.Dataframe to the terminal
+
+        :return: None
+        '''
+
+        for df in self.data_frames.values() if isinstance(self.data_frames, dict) else self.data_frames:
+            print(tabulate(df, headers='keys', tablefmt='psql'))
+
+    def get_req_name(self) -> Union[str, None]:
+        '''
+        Get requirement name for the Excel
+
+        :return: requirement as a string or None if no related column found
+        '''
+
+        workload_df = self.data_frames.get(NONCFP_SHEET_NAMES, None)
+
+        if workload_df is None or SR_NONCOSMIC_REQ_NAME not in workload_df.columns:
+            return None
+
+        try:
+            return workload_df.iloc[1, workload_df.columns.get_loc(SR_NONCOSMIC_REQ_NAME)]
+        except IndexError:  # if not exists
+            return None
+
+    def get_project_name(self) -> Union[str, None]:
+        '''
+        Get project name for the Excel
+
+        :return: requirement as a string or None if no related column found
+        '''
+
+        workload_df = self.data_frames.get(NONCFP_SHEET_NAMES, None)
+
+        if workload_df is None or SR_NONCOSMIC_PROJECT_NAME not in workload_df.columns:
+            return None
+
+        try:
+            return workload_df.iloc[1, workload_df.columns.get_loc(SR_NONCOSMIC_PROJECT_NAME)]
+        except IndexError:  # if not exists
+            return None
 
 
 class FindExcels(UnionExcels):
@@ -415,7 +493,7 @@ class ResultSummary(PdExcel):
 
         # check sr noncosmic
         def check_noncosmic(path: str):
-            cosmic_excel = CosmicReqExcel(path=path)
+            cosmic_excel = NonCosmicReqExcel(path=path)
 
             # load excel to class df
             cosmic_excel.load_excel()

@@ -515,10 +515,7 @@ class ResultSummary(PdExcel):
 
         # check sr cosmic
         def check_cosmic(path: str):
-            if req_num in (86, 98, 110, 208):
-                return {}
-
-            # print(req_num)
+            print(req_num)
             cosmic_excel = CosmicReqExcel(path=path)
 
             # load excel to class df
@@ -588,7 +585,10 @@ class ResultSummary(PdExcel):
                     return {"REQ Num": req_num, "path": req_folder_path, "match": False, "note": "Incorrect type of cosmic excel based on requirement"}
 
                 # file matched
-                return check_cosmic(path=qualified_paths[0])
+                try:
+                    return check_cosmic(path=qualified_paths[0])
+                except KeyError:
+                    return {"REQ Num": req_num, "path": req_folder_path, "match": False, "note": "KeyError, Check column name"}
 
             else:
                 return {"REQ Num": req_num, "path": req_folder_path, "match": False, "note": "Incorrect number of cosmic excel(s) based on requirement"}
@@ -601,7 +601,11 @@ class ResultSummary(PdExcel):
                             "note": "Incorrect type of cosmic excel based on requirement"}
 
                 # file matched
-                return check_noncosmic(path=qualified_paths[0])
+                try:
+                    return check_noncosmic(path=qualified_paths[0])
+                except KeyError:
+                    return {"REQ Num": req_num, "path": req_folder_path, "match": False,
+                            "note": "KeyError, Check column name"}
 
             else:
                 return {"REQ Num": req_num, "path": req_folder_path, "match": False,
@@ -618,15 +622,18 @@ class ResultSummary(PdExcel):
                     return {"REQ Num": req_num, "path": req_folder_path, "match": False,
                             "note": "Incorrect type of cosmic excel based on requirement"}
 
-                if qualified_paths_docs[0].startswith(SR_NONCOSMIC_FILE_PREFIX):
-                    c_result: dict = check_cosmic(path=qualified_paths[1])
-                    nc_result : dict = check_noncosmic(path=qualified_paths[0])
-                else:
-                    c_result : dict = check_cosmic(path=qualified_paths[0])
-                    nc_result : dict = check_noncosmic(path=qualified_paths[1])
+                try:
+                    if qualified_paths_docs[0].startswith(SR_NONCOSMIC_FILE_PREFIX):
+                        c_result: dict = check_cosmic(path=qualified_paths[1])
+                        nc_result : dict = check_noncosmic(path=qualified_paths[0])
+                    else:
+                        c_result : dict = check_cosmic(path=qualified_paths[0])
+                        nc_result : dict = check_noncosmic(path=qualified_paths[1])
 
-                return {"REQ Num": req_num, "path": req_folder_path, "match": c_result['match'] & nc_result['match'],
+                    return {"REQ Num": req_num, "path": req_folder_path, "match": c_result['match'] & nc_result['match'],
                         "note": c_result['note'] + nc_result['note']}
+                except KeyError:
+                    return {"REQ Num": req_num, "path": req_folder_path, "match": False, "note": "KeyError, Check column name"}
 
             else:
                 return {"REQ Num": req_num, "path": req_folder_path, "match": False,
@@ -733,7 +740,8 @@ for i in range(len(results)):
         print('err', i)
         print(results[i])
 
-fml = [fm for fm in resp['results'] if fm != dict() and fm['REQ Num'] >= 228 and not fm['match']]
+# fml = [fm for fm in resp['results'] if fm != dict() and fm['REQ Num'] >= 228 and not fm['match']]
+fml = [fm for fm in resp['results'] if fm != dict() and not fm['match']]
 print(fml)
 print(len(fml))
 

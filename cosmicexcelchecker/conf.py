@@ -61,3 +61,21 @@ SR_NONCOSMIC_REQ_NUM = '需求序号'
 
 # Single Requirement Excel (non-cosmic) project col name, default to '项目名称'
 SR_NONCOSMIC_PROJECT_NAME = '项目名称'
+
+# Single Requirement Excel (cosmic) analytics confirmation, default to
+SR_FINAL_CONFIRMATION = ['结算评估确认表', '结论评估确认表', '结论认同表']
+
+# Analytics confirmation (cosmic) req_num, default to '需求工单号'
+SR_AC_REQ_NUM = '需求工单号'
+
+# Analytics confirmation (cosmic) req_name, default to '需求名称'
+SR_AC_REQ_NAME = '需求名称'
+
+# Analytics confirmation (cosmic) report number (days), default to '上报工作量（人天）'
+SR_AC_REPORT_NUM = '上报工作量\n（人天）'
+
+# Analytics confirmation (cosmic) final result (days), default to '最终结果（人天）'
+SR_AC_FINAL_NUM = '最终结果\n（人天）'
+
+# Analytics confirmation (cosmic) final result (days)'s limitation, default to 3.4
+SR_AC_FINAL_NUM_LIMIT = 3.4

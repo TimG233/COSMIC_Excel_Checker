@@ -2,19 +2,24 @@
 import numpy
 import pandas
 
-from _baseclass import PdExcel, UnionExcels
+from _baseclass import PdExcel
 from typing import Union, Dict, List
-from errors import CosmicExcelCheckerException ,IncorrectFileTypeException, RepeatedREQNumException, SheetNotFoundException, UnknownREQNumException
+from errors import CosmicExcelCheckerException ,IncorrectFileTypeException, RepeatedREQNumException, \
+    SheetNotFoundException, UnknownREQNumException
 from tabulate import tabulate
-from conf import CFP_SHEET_NAMES ,CFP_COLUMN_NAME, SUB_PROCESS_NAME, RS_SKIP_ROWS, RS_TOTAL_CFP_NAME, RS_WORKLOAD_NAME, RS_REQ_NUM, RS_REQ_NAME, SR_COSMIC_REQ_NAME,  SR_NONCOSMIC_REQ_NAME, SR_SUBFOLDER_NAME, SR_COSMIC_FILE_PREFIX, SR_NONCOSMIC_FILE_PREFIX, RS_QLF_COSMIC, COEFFICIENT_SHEET_NAME, COEFFICIENT_SHEET_DATA_COL_NAME, NONCFP_SHEET_NAMES, SR_NONCOSMIC_PROJECT_NAME, SR_NONCOSMIC_REQ_NUM
+from conf import CFP_SHEET_NAMES ,CFP_COLUMN_NAME, SUB_PROCESS_NAME, RS_SKIP_ROWS, RS_TOTAL_CFP_NAME, \
+    RS_WORKLOAD_NAME, RS_REQ_NUM, RS_REQ_NAME, SR_COSMIC_REQ_NAME,  SR_NONCOSMIC_REQ_NAME, SR_SUBFOLDER_NAME, \
+    SR_COSMIC_FILE_PREFIX, SR_NONCOSMIC_FILE_PREFIX, RS_QLF_COSMIC, COEFFICIENT_SHEET_NAME, \
+    COEFFICIENT_SHEET_DATA_COL_NAME, NONCFP_SHEET_NAMES, SR_NONCOSMIC_PROJECT_NAME, SR_NONCOSMIC_REQ_NUM, \
+    SR_AC_REPORT_NUM, SR_AC_FINAL_NUM, SR_FINAL_CONFIRMATION, SR_AC_REQ_NUM, SR_AC_REQ_NAME, SR_AC_FINAL_NUM_LIMIT
+
+from find import FindExcels
 
 import pandas as pd
 import numpy as np
 import time
 import re
 import math
-
-import glob
 
 class CosmicReqExcel(PdExcel):
     '''
@@ -37,10 +42,8 @@ class CosmicReqExcel(PdExcel):
         file_ext = self.path[self.path.rindex('.'):]
 
         # it can be simplified to a dict[file_ext:engine] but with less readability
-        if file_ext == '.xlsx':
-            self.data_frames = pd.read_excel(self.path, sheet_name=None, engine='openpyxl')
-        elif file_ext == '.xls':
-            self.data_frames = pd.read_excel(self.path, sheet_name=None, engine='xlrd')
+        if file_ext in ('.xlsx', '.xls'):
+            self.data_frames = pd.read_excel(self.path, sheet_name=None)
         else:
             raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for an Excel file")
 
@@ -147,10 +150,10 @@ class CosmicReqExcel(PdExcel):
             note = ''
 
         return {
-            'path': self.path,
-            'match': True,
-            'CFP': cfp_total,
-            'note': note
+            "path": self.path,
+            "match": True,
+            "CFP": cfp_total,
+            "note": note
         }
 
     def check_coefficient_sheet(self) -> Union[bool, None]:
@@ -179,11 +182,110 @@ class CosmicReqExcel(PdExcel):
         except ValueError:
             return None
 
+    def check_final_confirmation(self) -> dict:
+        '''
+        check final confirmation worksheet if applicable, by the contents comparing to itself and other sheets
+
+        :return: a result dictionary shows the match info
+        '''
+        for sheet_name in SR_FINAL_CONFIRMATION:
+            fc_sheet : Union[pd.DataFrame, None] = self.data_frames.get(sheet_name, None) if \
+                isinstance(self.data_frames, dict) else None
+
+            if fc_sheet is not None:
+                break
+
+        if fc_sheet is None:  # noqa
+            return {
+                "path": self.path,
+                "match": False,
+                "note": "No related final confirmation worksheet found"
+            }
+
+        # ignore first row, set index 1 as column and reset index.
+        fc_sheet.columns = fc_sheet.iloc[0]  # noqa
+        fc_sheet = fc_sheet.iloc[1:]
+        fc_sheet = fc_sheet.reset_index(drop=True)
+
+        # load other sheets for comparison
+        coefficient_sheet : pd.DataFrame = self.data_frames.get(COEFFICIENT_SHEET_NAME, None) \
+            if isinstance(self.data_frames, dict) else None
+
+        if coefficient_sheet is None:
+            return {
+                "path": self.path,
+                "match": False,
+                "note": "No related coeffficient worksheet found"
+            }
+
+        for sheet_name in CFP_SHEET_NAMES:  # iterate through
+            cfp_df : Union[pd.DataFrame, None] = self.data_frames.get(sheet_name, None) \
+                if isinstance(self.data_frames, dict) else None
+
+        if cfp_df is None:  # noqa
+            return {
+                "path": self.path,
+                "match": False,
+                "note": "No related Cosmic worksheet found"
+            }
+
+        try:
+            note : str = ''
+
+            # extract folder req by path
+            extract_folder_req = rf"\/(?P<req>[0-9]{{1,4}})\/{SR_SUBFOLDER_NAME}\/{SR_COSMIC_FILE_PREFIX}[0-9A-Za-z,&@#$%.\[\]{{}};'\u4e00-\u9fff：。，（）()’￥……]+\.xls[x]{{0,1}}$"
+            match = ""
+            for m in re.finditer(pattern=extract_folder_req, string=self.path):
+                match = m['req']  # type: str
+
+            if match == '':
+                note += 'Path Corrupted (no req num subfolder)\t'
+
+            if not match.isnumeric():
+                note += 'Missing Req num (cosmic, fc)'
+
+            elif fc_sheet.iloc[0, fc_sheet.columns.get_loc(SR_AC_REQ_NUM)] != int(match):
+                    note += 'Req Num not match (cosmic, fc)\t'
+
+            # check req name
+            if fc_sheet.iloc[0, fc_sheet.columns.get_loc(SR_AC_REQ_NAME)] != self.get_req_name():
+                note += 'Req Name not match (cosmic, fc)\t'
+
+            # # check report num of days
+            # std_num_days = round(coefficient_sheet.iloc[-1, -1])
+            # if abs(fc_sheet.iloc[0, fc_sheet.columns.get_loc(SR_AC_REPORT_NUM)] - std_num_days) >= 0.1:  # errors
+            #     note += 'report num of days not match (coefficient, fc)\t'
+            #
+            # # check final report num of days
+            # if std_num_days <= SR_AC_FINAL_NUM_LIMIT:
+            #     final_num_days = std_num_days
+            # else:
+            #     final_num_days = SR_AC_FINAL_NUM_LIMIT
+            #
+            # fnd_inchart = fc_sheet.iloc[0, fc_sheet.columns.get_loc(SR_AC_FINAL_NUM)]
+            # if fnd_inchart > SR_AC_FINAL_NUM_LIMIT or abs(fnd_inchart - final_num_days) >= 0.1:  # errors
+            #     note += 'final num of days not match (fc)\t'
+            #
+            # note = note.strip('\t')
+
+            return {
+                "path": self.path,
+                "match": note == '',
+                "note": note
+            }
+
+        except KeyError:
+            return {
+                "path": self.path,
+                "match": False,
+                "note": "Key Error in worksheet. Make sure they are in standard format"
+            }
+
 
 class NonCosmicReqExcel(PdExcel):
     '''
     Implementation of Abstract class PdExcel
-    Mainly used for representing non-cosmic excel file (single requirement)
+    Mainly used for representing non-cosmic Excel file (single requirement)
     '''
 
     def __init__(self, path: str):
@@ -201,10 +303,8 @@ class NonCosmicReqExcel(PdExcel):
         file_ext = self.path[self.path.rindex('.'):]
 
         # it can be simplified to a dict[file_ext:engine] but with less readability
-        if file_ext == '.xlsx':
-            self.data_frames = pd.read_excel(self.path, sheet_name=None, engine='openpyxl')
-        elif file_ext == '.xls':
-            self.data_frames = pd.read_excel(self.path, sheet_name=None, engine='xlrd')
+        if file_ext in ('.xlsx', '.xls'):
+            self.data_frames = pd.read_excel(self.path, sheet_name=None)
         else:
             raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for an Excel file")
 
@@ -260,32 +360,6 @@ class NonCosmicReqExcel(PdExcel):
         except IndexError:  # if not exists
             return None
 
-
-class FindExcels(UnionExcels):
-    '''
-    Concrete class for finding all possible Excels under certain paths
-    '''
-
-    @staticmethod
-    def path_format(path: str) -> str:
-        # improve format of path
-        return path.replace('\\', '/').strip()
-
-    @staticmethod
-    def find_excels(path: str) -> list[str, None]:
-        path = FindExcels.path_format(path=path)
-
-        if not path.endswith('/**/*'):
-            path += '/**/*'  # to iterate all files
-
-        # using glob for recursive searching
-        excels : list[str, None] = []
-        for filename in glob.iglob(pathname=path, recursive=True):
-            if filename.endswith(('.xlsx', '.xls', '.csv')):
-                excels.append(filename.replace('\\', '/'))
-
-        return excels
-
 class ResultSummary(PdExcel):
     '''
     Another implementation of Abstract class PdExcel
@@ -312,10 +386,8 @@ class ResultSummary(PdExcel):
         file_ext = self.path[self.path.rindex('.'):]
 
         # it can be simplified to a dict[file_ext:engine] but with less readability
-        if file_ext == '.xlsx':
-            self.data_frames = pd.read_excel(self.path, sheet_name=None, engine='openpyxl', skiprows=range(RS_SKIP_ROWS))
-        elif file_ext == '.xls':
-            self.data_frames = pd.read_excel(self.path, sheet_name=None, engine='xlrd', skiprows=range(RS_SKIP_ROWS))
+        if file_ext in ('.xlsx', '.xls'):
+            self.data_frames = pd.read_excel(self.path, sheet_name=None, skiprows=range(RS_SKIP_ROWS))
         else:
             raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for an Excel file")
 
@@ -326,14 +398,6 @@ class ResultSummary(PdExcel):
             self.data_frames = pd.read_csv(self.path, skiprows=range(RS_SKIP_ROWS))
         else:
             raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for a csv file")
-
-    # def search_files(self):
-    #     '''
-    #     search all files under the given path (xlsx specific)
-    #     :return: None
-    #     '''
-    #
-    #     self.file_paths = FindExcels.find_excels(path=self.folders_path)
 
     def set_sheet_name(self, sheet_name: str):
         '''
@@ -483,13 +547,13 @@ class ResultSummary(PdExcel):
             elif coefficient_sheet_match is False:
                 note += 'Coefficient Sheet B1 data does not match total standard CFP pts\t'
 
+            # check final confirmation worksheet
+            fc_result = cosmic_excel.check_final_confirmation()
+            note += fc_result['note']
+
             note = note.rstrip('\t')
 
-            if note != '':  # has invalid info
-                return {"REQ Num": req_num, "path": req_folder_path, "match": False,
-                        "note": note}
-
-            return {"REQ Num": req_num, "path": req_folder_path, "match": True, "note": ""}
+            return {"REQ Num": req_num, "path": req_folder_path, "match": note == "", "note": note}
 
         # check sr noncosmic
         def check_noncosmic(path: str):
@@ -512,11 +576,7 @@ class ResultSummary(PdExcel):
 
             note = note.rstrip('\t')
 
-            if note != '':  # has invalid info
-                return {"REQ Num": req_num, "path": req_folder_path, "match": False,
-                        "note": note}
-
-            return {"REQ Num": req_num, "path": req_folder_path, "match": True, "note": ""}
+            return {"REQ Num": req_num, "path": req_folder_path, "match": note == "", "note": ""}
 
         # qualified paths parent folder
         qualified_paths_docs = [path[path.rindex('/') + 1:] for path in qualified_paths]
@@ -673,7 +733,7 @@ for i in range(len(results)):
         print('err', i)
         print(results[i])
 
-fml = [fm for fm in resp['results'] if fm != dict() and fm['REQ Num'] < 228 and not fm['match']]
+fml = [fm for fm in resp['results'] if fm != dict() and fm['REQ Num'] >= 228 and not fm['match']]
 print(fml)
 print(len(fml))
 

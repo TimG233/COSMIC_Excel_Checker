@@ -15,11 +15,15 @@ from conf import CFP_SHEET_NAMES ,CFP_COLUMN_NAME, SUB_PROCESS_NAME, RS_SKIP_ROW
 
 from find import FindExcels
 
+from deprecated import deprecated
+
 import pandas as pd
 import numpy as np
 import time
 import re
 import math
+import xlrd
+import openpyxl
 
 class CosmicReqExcel(PdExcel):
     '''
@@ -37,6 +41,7 @@ class CosmicReqExcel(PdExcel):
         self.path : str = path
         self.data_frames: Union[Dict[str, pd.DataFrame], None] = None
         self.log : Union[List[str], str, None] = None
+        self.file_format : Union[str, None] = None
 
     def load_excel(self):
         file_ext = self.path[self.path.rindex('.'):]
@@ -44,14 +49,19 @@ class CosmicReqExcel(PdExcel):
         # it can be simplified to a dict[file_ext:engine] but with less readability
         if file_ext in ('.xlsx', '.xls'):
             self.data_frames = pd.read_excel(self.path, sheet_name=None)
+
+            self.file_format = file_ext
         else:
             raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for an Excel file")
 
+    @deprecated(version='0.2.0', reason="All files should be Excel and loaded by 'load_excel'; Removed in 0.3.0")
     def load_csv(self):
         file_ext = self.path[self.path.rindex('.')]
 
         if file_ext == '.csv':
             self.data_frames = pd.read_csv(self.path)
+
+            self.file_format = file_ext
         else:
             raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for a csv file")
 
@@ -251,6 +261,7 @@ class CosmicReqExcel(PdExcel):
             if fc_sheet.iloc[0, fc_sheet.columns.get_loc(SR_AC_REQ_NAME)] != self.get_req_name():
                 note += 'Req Name not match (cosmic, fc)\t'
 
+            # **DO NOT DELETE**
             # # check report num of days
             # std_num_days = round(coefficient_sheet.iloc[-1, -1])
             # if abs(fc_sheet.iloc[0, fc_sheet.columns.get_loc(SR_AC_REPORT_NUM)] - std_num_days) >= 0.1:  # errors
@@ -281,6 +292,129 @@ class CosmicReqExcel(PdExcel):
                 "note": "Key Error in worksheet. Make sure they are in standard format"
             }
 
+    def check_highlight_cfp(self) -> list[int, None]:
+        '''
+        check the highlight on sub-process and its corresponding cfp in the same line
+        No fill: 1 cfp; Yellow: 0 cfp; Red: 1/3 cfp
+
+        :return:
+        '''
+
+        # load the Excel again using openpyxl/xlrd
+        if self.file_format == '.csv':
+            return list()
+        elif self.file_format == '.xlsx':
+            excel = openpyxl.load_workbook(self.path)
+
+            # open cfp sheet
+            sheet = None
+            cfp_df : Union[pd.DataFrame, None] = None
+            for sheet_name in CFP_SHEET_NAMES:
+                if sheet_name in excel:
+                    sheet = excel[sheet_name]
+                    cfp_df = self.data_frames.get(sheet_name, None) if \
+                        isinstance(self.data_frames, dict) else None
+                    break
+
+            if sheet is None or cfp_df is None:
+                raise SheetNotFoundException(f"Standard CFP Sheet not found")
+
+            # get subprocess index and cfp
+            sp_idx = cfp_df.columns.get_loc(SUB_PROCESS_NAME)  # subprocess col
+            cfp_idx = cfp_df.columns.get_loc(CFP_COLUMN_NAME)
+
+            err_list : list = []
+            row_num = 1  # 1-based, =1 since min_row = 2
+            # extract cell value and compare
+            for row in sheet.iter_rows(min_row=2):  # 1-based idx for min_row
+                row_num += 1
+                sp_color_hex : str = ""
+                cfp_cell : str = ""
+                # for i in range(len(row)):
+                #     if i == sp_idx and row[i].value != SUB_PROCESS_NAME:  # avoid first row
+                #         sp_color_hex : str = row[i].fill.start_color.index  # hex value for the cell fill color
+                #
+                #     if i == cfp_idx and row[i].value != CFP_COLUMN_NAME:
+                #         cfp_cell = str(row[i].value)
+                sp_color_hex : str = row[sp_idx].fill.start_color.index
+                cfp_cell = str(row[cfp_idx].value)  # avoid str cell value
+
+                if sp_color_hex == "":  # not counted since subprocess is empty
+                    continue
+
+                if cfp_cell == "":  # only count valid subprocess row
+                    err_list.append(f'{row_num} Missing Data')
+                    continue
+                try:
+                    cfp_cell : float = float(cfp_cell)
+                except ValueError:
+                    err_list.append(f'{row_num} CFP not a number')
+                    continue
+
+                if sp_color_hex == 'FFFFFF00' and cfp_cell != 0:  # YELLOW
+                    err_list.append(f'{row_num} Yellow != 0')
+                elif sp_color_hex == 'FFFF0000' and abs(cfp_cell - 1/3) >= 0.01:  # RED
+                    err_list.append(f'{row_num} Red != 1/3 or 0.333')
+                elif (sp_color_hex == '00000000' or (type(sp_color_hex) is int and sp_color_hex == 9)) and cfp_cell != 1:  # No fill
+                    err_list.append(f'{row_num} No fill (White) != 1')
+
+        elif self.file_format == '.xls':
+            excel = xlrd.open_workbook(self.path, formatting_info=True)
+
+            # open cfp sheet
+            sheet = None
+            cfp_df: Union[pd.DataFrame, None] = None
+            for sheet_name in CFP_SHEET_NAMES:
+                if sheet_name in excel.sheet_names():
+                    sheet = excel.sheet_by_name(sheet_name)
+                    cfp_df = self.data_frames.get(sheet_name, None) if \
+                        isinstance(self.data_frames, dict) else None
+                    break
+
+            if sheet is None or cfp_df is None:
+                raise SheetNotFoundException(f"Standard CFP Sheet not found")
+
+            # get idx of subprocess and cfp col
+            sp_idx = cfp_df.columns.get_loc(SUB_PROCESS_NAME)  # subprocess col
+            cfp_idx = cfp_df.columns.get_loc(CFP_COLUMN_NAME)
+
+            err_list = []
+            rows = sheet.nrows
+            # cols = sheet.ncols
+
+            for i in range(1, rows):
+                sp_cell : xlrd.sheet.Cell = sheet.cell(rowx=i, colx=sp_idx)
+                cfp_cell : xlrd.sheet.Cell = sheet.cell(rowx=i, colx=cfp_idx)
+
+                xfx = sheet.cell_xf_index(rowx=i, colx=sp_idx)  # xf index
+                xf = excel.xf_list[xfx]  # used xfx as index
+                bgx = xf.background.pattern_colour_index
+
+                cfp : str = str(cfp_cell.value)
+                if str(sp_cell.value) == "":  # not count as valid if subprocess is empty
+                    continue
+
+                if cfp == "":  # only count valid subprocess row
+                    err_list.append(f'{i + 1} Missing data')
+                    continue
+
+                try:
+                    cfp : float = float(cfp)
+                except ValueError:
+                    err_list.append(f'{i + 1} CFP not a number')
+                    continue
+
+                if bgx == 13 and float(cfp) != 0:  # YELLOW
+                    err_list.append(f'{i + 1} Yellow != 0')
+                elif bgx == 10 and abs(float(cfp) - 1/3) >= 0.01:  # RED
+                    err_list.append(f'{i + 1} Red != 1/3 or 0.333')
+                elif bgx == 64 and float(cfp) != 1:  # no fill
+                    err_list.append(f'{i + 1} No fill (White) != 1')
+
+        else:
+            raise IncorrectFileTypeException(f"Incorrect file type {self.file_format}. It has to be .xlsx or .xls file (.csv deprecated)")
+
+        return err_list
 
 class NonCosmicReqExcel(PdExcel):
     '''
@@ -308,6 +442,7 @@ class NonCosmicReqExcel(PdExcel):
         else:
             raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for an Excel file")
 
+    @deprecated(version='0.2.0', reason="All files should be Excel and loaded by 'load_excel'; Removed in 0.3.0")
     def load_csv(self):
         file_ext = self.path[self.path.rindex('.')]
 
@@ -391,6 +526,7 @@ class ResultSummary(PdExcel):
         else:
             raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for an Excel file")
 
+    @deprecated(version='0.2.0', reason="All files should be Excel and loaded by 'load_excel'; Removed in 0.3.0")
     def load_csv(self):
         file_ext = self.path[self.path.rindex('.')]
 
@@ -515,7 +651,7 @@ class ResultSummary(PdExcel):
 
         # check sr cosmic
         def check_cosmic(path: str):
-            print(req_num)
+            # print(req_num)
             cosmic_excel = CosmicReqExcel(path=path)
 
             # load excel to class df
@@ -546,7 +682,13 @@ class ResultSummary(PdExcel):
 
             # check final confirmation worksheet
             fc_result = cosmic_excel.check_final_confirmation()
-            note += fc_result['note']
+            if fc_result['note'] != "":
+                note += f"{fc_result['note']}\t"
+
+            # check highlight
+            hl_result = cosmic_excel.check_highlight_cfp()
+            if hl_result != list():
+                note += f"highlight err: {str(hl_result)}\t"
 
             note = note.rstrip('\t')
 
@@ -643,37 +785,6 @@ class ResultSummary(PdExcel):
             return {"REQ Num": req_num, "path": req_folder_path, "match": False,
                     "note": f"The parameter {qualified_cosmic} is not accepted"}
 
-        # # load the cosmic file (needs to improve later)
-        # # from here, error will not instantly return, it will continue to leave in 'note' param
-        # if qualified_paths[0].startswith(f"{req_folder_path}{SR_NONCOSMIC_FILE_PREFIX}"):
-        #     cosmic_excel = CosmicReqExcel(path=qualified_paths[1])
-        # else:
-        #     cosmic_excel = CosmicReqExcel(path=qualified_paths[0])
-        #
-        # # load excel to class df
-        # cosmic_excel.load_excel()
-        #
-        # note = ''
-        # # check req name
-        # if self.data_frame_specific.iloc[row_index, self.data_frame_specific.columns.get_loc(RS_REQ_NAME)] != cosmic_excel.get_req_name():
-        #     note += 'REQ name does not match\t'
-        #
-        # # check total CFP name
-        # total_cfp : str = str(self.data_frame_specific.iloc[row_index, self.data_frame_specific.columns.get_loc(RS_TOTAL_CFP_NAME)])
-        # if total_cfp.isnumeric():
-        #     if float(total_cfp) != cosmic_excel.get_CFP_total():
-        #         note += 'Total CFP points do not match\t'
-        # else:
-        #     note += 'CFP points in Result Summary is not valid'
-        #
-        # note = note.rstrip('\t')
-        #
-        # if note != '':  # has invalid info
-        #     return {"REQ Num": req_num, "path": req_folder_path, "match": False,
-        #             "note": note}
-        #
-        # return {"REQ Num": req_num, "path": req_folder_path, "match": True, "note": ""}
-
     def check_all_files(self) -> dict[str, list[dict, None]]:
         '''
         Check all related files listed in the result summary.
@@ -703,14 +814,15 @@ class ResultSummary(PdExcel):
 
 
 # c = CosmicReqExcel(path='附件5：COSMIC功能点拆分表.xls')
-c = CosmicReqExcel(path='test.xlsx')
+c = CosmicReqExcel(path='171test.xls')
 c.load_excel()
 # c.print_df()
 # print(c.get_CFP_total(data=c.data_frames.get('COSMIC软件评估标准模板', None)))
 print(c.get_CFP_total())
 print(c.check_CFP_column())
-print(c.data_frames.get('功能点拆分表', None).loc[:, 'OPEX-需求名称\nCAPEX-子系统'])
+# print(c.data_frames.get('功能点拆分表', None).loc[:, 'OPEX-需求名称\nCAPEX-子系统'])
 print("req name", c.get_req_name())
+print("check highlight cfp", c.check_highlight_cfp())
 
 fs = FindExcels.find_excels(path='D:\zgydsjy\软件评估\\171')
 print(len(fs))
@@ -741,7 +853,7 @@ for i in range(len(results)):
         print(results[i])
 
 # fml = [fm for fm in resp['results'] if fm != dict() and fm['REQ Num'] >= 228 and not fm['match']]
-fml = [fm for fm in resp['results'] if fm != dict() and not fm['match']]
+fml = [fm for fm in resp['results'] if fm != dict() and not fm['match'] and "highlight" in fm['note']]
 print(fml)
 print(len(fml))
 

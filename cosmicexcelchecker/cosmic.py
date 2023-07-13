@@ -474,7 +474,7 @@ class NonCosmicReqExcel(PdExcel):
             return None
 
         try:
-            return workload_df.iloc[1, workload_df.columns.get_loc(SR_NONCOSMIC_REQ_NAME)]
+            return workload_df.iloc[0, workload_df.columns.get_loc(SR_NONCOSMIC_REQ_NAME)]
         except IndexError:  # if not exists
             return None
 
@@ -491,7 +491,7 @@ class NonCosmicReqExcel(PdExcel):
             return None
 
         try:
-            return workload_df.iloc[1, workload_df.columns.get_loc(SR_NONCOSMIC_PROJECT_NAME)]
+            return workload_df.iloc[0, workload_df.columns.get_loc(SR_NONCOSMIC_PROJECT_NAME)]
         except IndexError:  # if not exists
             return None
 
@@ -523,6 +523,13 @@ class ResultSummary(PdExcel):
         # it can be simplified to a dict[file_ext:engine] but with less readability
         if file_ext in ('.xlsx', '.xls'):
             self.data_frames = pd.read_excel(self.path, sheet_name=None, skiprows=range(RS_SKIP_ROWS))
+
+            df_specific = self.data_frames.get(self.sheet_name, None)
+
+            if df_specific is None:
+                raise SheetNotFoundException(f"Sheet with name {self.sheet_name} is not found inside the given file")
+
+            self.data_frame_specific = df_specific
         else:
             raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for an Excel file")
 
@@ -637,8 +644,6 @@ class ResultSummary(PdExcel):
         req_num = self.data_frame_specific.iloc[row_index, self.data_frame_specific.columns.get_loc(RS_REQ_NUM)]
 
         # requirement folder path based on req_num
-        req_folder_path = f'{self.folders_path}/{str(req_num)}/'
-
         req_folder_path_pattern = rf'{self.folders_path}\/(?:.*\/|){str(req_num)}\/'
 
         # qualified paths inside self.file_paths
@@ -661,61 +666,61 @@ class ResultSummary(PdExcel):
             # check req name
             if self.data_frame_specific.iloc[
                 row_index, self.data_frame_specific.columns.get_loc(RS_REQ_NAME)] != cosmic_excel.get_req_name():
-                note += 'REQ name does not match (cosmic)\t'
+                note += 'REQ name does not match (cosmic); '
 
             # check total CFP name
             total_cfp: str = str(
                 self.data_frame_specific.iloc[row_index, self.data_frame_specific.columns.get_loc(RS_TOTAL_CFP_NAME)])
             if total_cfp.isnumeric():
                 if float(total_cfp) != cosmic_excel.get_CFP_total():
-                    note += 'Total CFP points do not match (cosmic)\t'
+                    note += 'Total CFP points do not match (cosmic); '
             else:
-                note += 'CFP points in Result Summary is not valid (cosmic)\t'
+                note += 'CFP points in Result Summary is not valid (cosmic); '
 
             # Check coefficient sheet
             coefficient_sheet_match = cosmic_excel.check_coefficient_sheet()
 
             if coefficient_sheet_match is None:
-                note += 'No Coefficient Sheet in Excel (cosmic)\t'
+                note += 'No Coefficient Sheet in Excel (cosmic); '
             elif coefficient_sheet_match is False:
-                note += 'Coefficient Sheet B1 data does not match total standard CFP pts\t'
+                note += 'Coefficient Sheet B1 data does not match total standard CFP pts; '
 
             # check final confirmation worksheet
             fc_result = cosmic_excel.check_final_confirmation()
             if fc_result['note'] != "":
-                note += f"{fc_result['note']}\t"
+                note += f"{fc_result['note']}; "
 
             # check highlight
             hl_result = cosmic_excel.check_highlight_cfp()
             if hl_result != list():
-                note += f"highlight err: {str(hl_result)}\t"
+                note += f"highlight err: {str(hl_result)}; "
 
-            note = note.rstrip('\t')
+            note = note.rstrip('; ')
 
-            return {"REQ Num": req_num, "path": req_folder_path, "match": note == "", "note": note}
+            return {"REQ Num": req_num, "path": path, "match": note == "", "note": note}
 
         # check sr noncosmic
         def check_noncosmic(path: str):
-            cosmic_excel = NonCosmicReqExcel(path=path)
+            noncosmic_excel = NonCosmicReqExcel(path=path)
 
             # load excel to class df
-            cosmic_excel.load_excel()
+            noncosmic_excel.load_excel()
 
             note = ''
             # check req name
             if self.data_frame_specific.iloc[
-                row_index, self.data_frame_specific.columns.get_loc(RS_REQ_NAME)] != cosmic_excel.get_req_name():
-                note += 'REQ name does not match (noncosmic)\t'
+                row_index, self.data_frame_specific.columns.get_loc(RS_REQ_NAME)] != noncosmic_excel.get_req_name():
+                note += 'REQ name does not match (noncosmic); '
 
             # make sure cfp total is 0 for non-cosmic file
-            total_cfp: str = str(
-                self.data_frame_specific.iloc[row_index, self.data_frame_specific.columns.get_loc(RS_TOTAL_CFP_NAME)])
-            if float(total_cfp) != 0.0:
-                note += 'Total CFP points is not 0 for non-cosmic requirement'
+            # total_cfp: str = str(
+            #     self.data_frame_specific.iloc[row_index, self.data_frame_specific.columns.get_loc(RS_TOTAL_CFP_NAME)])
+            # if float(total_cfp) != cosmic_cfp:  # cosmic_cfp is total cfp checked by cosmic file
+            #     note += 'Total CFP points is not 0 for non-cosmic requirement; '
 
-            note = note.rstrip('\t')
+            note = note.rstrip('; ')
 
-            return {"REQ Num": req_num, "path": req_folder_path, "match": note == "", "note": ""}
+            return {"REQ Num": req_num, "path": path, "match": note == "", "note": note}
 
         # qualified paths parent folder
         qualified_paths_docs = [path[path.rindex('/') + 1:] for path in qualified_paths]
@@ -724,65 +729,67 @@ class ResultSummary(PdExcel):
             if len(qualified_paths) == 1:
 
                 if not qualified_paths_docs[0].startswith(SR_COSMIC_FILE_PREFIX):
-                    return {"REQ Num": req_num, "path": req_folder_path, "match": False, "note": "Incorrect type of cosmic excel based on requirement"}
+                    return {"REQ Num": req_num, "path": qualified_paths[0], "match": False, "note": "Incorrect type of cosmic excel based on requirement"}
 
                 # file matched
                 try:
                     return check_cosmic(path=qualified_paths[0])
                 except KeyError:
-                    return {"REQ Num": req_num, "path": req_folder_path, "match": False, "note": "KeyError, Check column name"}
+                    return {"REQ Num": req_num, "path": qualified_paths[0], "match": False, "note": "KeyError, Check column name"}
 
             else:
-                return {"REQ Num": req_num, "path": req_folder_path, "match": False, "note": "Incorrect number of cosmic excel(s) based on requirement"}
+                return {"REQ Num": req_num, "path": qualified_paths[0], "match": False, "note": "Incorrect number of cosmic excel(s) based on requirement"}
 
         elif qualified_cosmic == '否':
             if len(qualified_paths) == 1:
 
                 if not qualified_paths_docs[0].startswith(SR_NONCOSMIC_FILE_PREFIX):
-                    return {"REQ Num": req_num, "path": req_folder_path, "match": False,
+                    return {"REQ Num": req_num, "path": qualified_paths[0], "match": False,
                             "note": "Incorrect type of cosmic excel based on requirement"}
 
                 # file matched
                 try:
                     return check_noncosmic(path=qualified_paths[0])
                 except KeyError:
-                    return {"REQ Num": req_num, "path": req_folder_path, "match": False,
+                    return {"REQ Num": req_num, "path": qualified_paths[0], "match": False,
                             "note": "KeyError, Check column name"}
 
             else:
-                return {"REQ Num": req_num, "path": req_folder_path, "match": False,
-                        "note": "Incorrect number of cosmic excel(s) based on requirement"}
+                return {"REQ Num": req_num, "path": qualified_paths[0], "match": False,
+                        "note": "Incorrect number of non-cosmic excel(s) based on requirement"}
 
         elif qualified_cosmic == '混合型':
+            print(qualified_paths)
             if len(qualified_paths) == 2:
-                c_prefix = f"{req_folder_path}{SR_COSMIC_FILE_PREFIX}"
-                nc_prefix = f"{req_folder_path}{SR_NONCOSMIC_FILE_PREFIX}"
-
-                if not ((qualified_paths[0].startswith(c_prefix) and qualified_paths[1].startswith(nc_prefix)) ^
-                        (qualified_paths[0].startswith(nc_prefix) and qualified_paths[1].startswith(c_prefix))):
-                    # Same logic to \neq((a==1&b==2)^(a==2&b==1))
-                    return {"REQ Num": req_num, "path": req_folder_path, "match": False,
-                            "note": "Incorrect type of cosmic excel based on requirement"}
+                c_prefix_pattern = rf"{req_folder_path_pattern}(?:.*\/|){SR_SUBFOLDER_NAME}\/{SR_COSMIC_FILE_PREFIX}"
+                nc_prefix_pattern = rf"{req_folder_path_pattern}(?:.*\/|){SR_SUBFOLDER_NAME}\/{SR_NONCOSMIC_FILE_PREFIX}"
 
                 try:
-                    if qualified_paths_docs[0].startswith(SR_NONCOSMIC_FILE_PREFIX):
+                    if bool(re.match(c_prefix_pattern, qualified_paths[1])) and \
+                            bool(re.match(nc_prefix_pattern, qualified_paths[0])):
                         c_result: dict = check_cosmic(path=qualified_paths[1])
                         nc_result : dict = check_noncosmic(path=qualified_paths[0])
-                    else:
+
+                    elif bool(re.match(c_prefix_pattern, qualified_paths[0])) and \
+                            bool(re.match(nc_prefix_pattern, qualified_paths[1])):
                         c_result : dict = check_cosmic(path=qualified_paths[0])
                         nc_result : dict = check_noncosmic(path=qualified_paths[1])
+                    else:
+                        return {"REQ Num": req_num, "path": qualified_paths[0], "match": False,
+                                "note": "Incorrect type of cosmic/non-cosmic excel based on requirement"}
 
-                    return {"REQ Num": req_num, "path": req_folder_path, "match": c_result['match'] & nc_result['match'],
-                        "note": c_result['note'] + nc_result['note']}
+                    return {"REQ Num": req_num, "path": qualified_paths[0], "match": c_result['match'] & nc_result['match'],
+                        "note": (c_result['note'] + '; ' + nc_result['note']).rstrip('; ')}
+
                 except KeyError:
-                    return {"REQ Num": req_num, "path": req_folder_path, "match": False, "note": "KeyError, Check column name"}
+                    return {"REQ Num": req_num, "path": qualified_paths[0], "match": False, "note": "KeyError, Check column name"}
 
             else:
-                return {"REQ Num": req_num, "path": req_folder_path, "match": False,
-                        "note": "Incorrect number of cosmic excel(s) based on requirement"}
+                return {"REQ Num": req_num, "path": qualified_paths[0], "match": False,
+                        "note": "Incorrect number of cosmic/non-cosmic excel(s) based on requirement"}
 
         else:
-            return {"REQ Num": req_num, "path": req_folder_path, "match": False,
+            return {"REQ Num": req_num, "path": qualified_paths[0], "match": False,
                     "note": f"The parameter {qualified_cosmic} is not accepted"}
 
     def check_all_files(self) -> dict[str, list[dict, None]]:
@@ -809,55 +816,4 @@ class ResultSummary(PdExcel):
         }
 
         return cf_results
-
-
-
-
-# c = CosmicReqExcel(path='附件5：COSMIC功能点拆分表.xls')
-c = CosmicReqExcel(path='171test.xls')
-c.load_excel()
-# c.print_df()
-# print(c.get_CFP_total(data=c.data_frames.get('COSMIC软件评估标准模板', None)))
-print(c.get_CFP_total())
-print(c.check_CFP_column())
-# print(c.data_frames.get('功能点拆分表', None).loc[:, 'OPEX-需求名称\nCAPEX-子系统'])
-print("req name", c.get_req_name())
-print("check highlight cfp", c.check_highlight_cfp())
-
-fs = FindExcels.find_excels(path='D:\zgydsjy\软件评估\\171')
-print(len(fs))
-print(FindExcels.find_excels(path='../cosmicexcelchecker'))
-
-# rs = ResultSummary(path='D:\\zgydsjy\\软件评估\\171\\COSMIC结果反馈_20230630.xls', folders_path='D:\\zgydsjy\\软件评估\\171', sheet_name='171_BASS系统软件升级优化服务项目_2023_第二季度')
-rs = ResultSummary(path='D:\\zgydsjy\\软件评估\\171\\COSMIC结果反馈_20230630.xls', folders_path='F:\\171', sheet_name='171_BASS系统软件升级优化服务项目_2023_第二季度')
-rs.load_excel()
-rs.set_sheet_name('171_BASS系统软件升级优化服务项目_2023_第二季度')
-# rs.print_df_specific()
-print(rs.check_ratio())
-print(rs.file_paths)
-print(rs.file_paths)
-print(len(rs.file_paths))
-# rs.data_frame_specific = None
-print(rs.check_file(req_num=438))
-# print(rs.check_all_files())
-resp = rs.check_all_files()
-print(resp['time'])
-print(resp)
-
-results = resp['results']
-for i in range(len(results)):
-    try:
-        results[i]['REQ Num']
-    except KeyError:
-        print('err', i)
-        print(results[i])
-
-# fml = [fm for fm in resp['results'] if fm != dict() and fm['REQ Num'] >= 228 and not fm['match']]
-fml = [fm for fm in resp['results'] if fm != dict() and not fm['match'] and "highlight" in fm['note']]
-print(fml)
-print(len(fml))
-
-c = CosmicReqExcel(path='D:\\zgydsjy\\软件评估\\171\\454\\COSMIC评估发起\\附件5：COSMIC功能点拆分表.xls')
-c.load_excel()
-print('c check coe', c.check_coefficient_sheet())
 

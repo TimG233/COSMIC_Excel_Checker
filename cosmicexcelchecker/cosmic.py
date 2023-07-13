@@ -326,7 +326,7 @@ class CosmicReqExcel(PdExcel):
             err_list : list = []
             row_num = 1  # 1-based, =1 since min_row = 2
             # extract cell value and compare
-            for row in sheet.iter_rows(min_row=2):  # 1-based idx for min_row
+            for row in sheet.iter_rows(min_row=2, max_row=len(cfp_df.index) + 1, min_col=sp_idx + 1, max_col=sp_idx + 1):  # 1-based idx for min_row, each row is a tuple
                 row_num += 1
                 sp_color_hex : str = ""
                 cfp_cell : str = ""
@@ -336,8 +336,8 @@ class CosmicReqExcel(PdExcel):
                 #
                 #     if i == cfp_idx and row[i].value != CFP_COLUMN_NAME:
                 #         cfp_cell = str(row[i].value)
-                sp_color_hex : str = row[sp_idx].fill.start_color.index
-                cfp_cell = str(row[cfp_idx].value)  # avoid str cell value
+                sp_color_hex : str = row[0].fill.start_color.index
+                cfp_cell = str(cfp_df.iloc[row_num - 2, cfp_idx])  # avoid str cell value
 
                 if sp_color_hex == "":  # not counted since subprocess is empty
                     continue
@@ -379,18 +379,17 @@ class CosmicReqExcel(PdExcel):
             cfp_idx = cfp_df.columns.get_loc(CFP_COLUMN_NAME)
 
             err_list = []
-            rows = sheet.nrows
-            # cols = sheet.ncols
+            rows = min(sheet.nrows, len(cfp_idx.index) + 1)
 
             for i in range(1, rows):
                 sp_cell : xlrd.sheet.Cell = sheet.cell(rowx=i, colx=sp_idx)
-                cfp_cell : xlrd.sheet.Cell = sheet.cell(rowx=i, colx=cfp_idx)
+                # cfp_cell : xlrd.sheet.Cell = sheet.cell(rowx=i, colx=cfp_idx)
 
                 xfx = sheet.cell_xf_index(rowx=i, colx=sp_idx)  # xf index
                 xf = excel.xf_list[xfx]  # used xfx as index
                 bgx = xf.background.pattern_colour_index
 
-                cfp : str = str(cfp_cell.value)
+                cfp : str = str(cfp_df.iloc[i - 1, cfp_idx])
                 if str(sp_cell.value) == "":  # not count as valid if subprocess is empty
                     continue
 
@@ -657,7 +656,6 @@ class ResultSummary(PdExcel):
 
         # check sr cosmic
         def check_cosmic(path: str):
-            # print(req_num)
             cosmic_excel = CosmicReqExcel(path=path)
 
             # load excel to class df
@@ -762,7 +760,6 @@ class ResultSummary(PdExcel):
                         "note": "Incorrect number of non-cosmic excel(s) based on requirement"}
 
         elif qualified_cosmic == '混合型':
-            print(qualified_paths)
             if len(qualified_paths) == 2:
                 c_prefix_pattern = rf"{req_folder_path_pattern}(?:.*\/|){SR_SUBFOLDER_NAME}\/{SR_COSMIC_FILE_PREFIX}"
                 nc_prefix_pattern = rf"{req_folder_path_pattern}(?:.*\/|){SR_SUBFOLDER_NAME}\/{SR_NONCOSMIC_FILE_PREFIX}"

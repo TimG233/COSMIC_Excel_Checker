@@ -8,4 +8,4 @@ class Version(NamedTuple):
     releasetype: Literal['alpha', 'beta', 'stable']
     serial: int
 
-version : Version = Version(major=0, minor=1, micro=2, releasetype='stable', serial=0)
+version : Version = Version(major=0, minor=1, micro=3, releasetype='stable', serial=0)

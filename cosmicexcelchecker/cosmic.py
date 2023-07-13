@@ -605,7 +605,8 @@ class ResultSummary(PdExcel):
 
         return bad_ratio
 
-    def check_file(self, req_num: int) -> dict:
+    def check_file(self, req_num: int, check_final_confirmation: bool = None,
+                   check_highlight_cfp: bool = None) -> dict:
         '''
         check a single file data, comparing to the result summary xlsx
         check req number, req name, CFP total, CFP Total comparison
@@ -686,14 +687,16 @@ class ResultSummary(PdExcel):
                 note += 'Coefficient Sheet B1 data does not match total standard CFP pts; '
 
             # check final confirmation worksheet
-            fc_result = cosmic_excel.check_final_confirmation()
-            if fc_result['note'] != "":
-                note += f"{fc_result['note']}; "
+            if check_final_confirmation:
+                fc_result = cosmic_excel.check_final_confirmation()
+                if fc_result['note'] != "":
+                    note += f"{fc_result['note']}; "
 
             # check highlight
-            hl_result = cosmic_excel.check_highlight_cfp()
-            if hl_result != list():
-                note += f"highlight err: {str(hl_result)}; "
+            if check_highlight_cfp:
+                hl_result = cosmic_excel.check_highlight_cfp()
+                if hl_result != list():
+                    note += f"highlight err: {str(hl_result)}; "
 
             note = note.rstrip('; ')
 
@@ -792,12 +795,15 @@ class ResultSummary(PdExcel):
             return {"REQ Num": req_num, "path": qualified_paths[0], "match": False,
                     "note": f"The parameter {qualified_cosmic} is not accepted"}
 
-    def check_all_files(self) -> dict[str, list[dict, None]]:
+    def check_all_files(self, check_final_confirmation: bool = True,
+                        check_highlight_cfp: bool = True) -> dict[str, list[dict, None]]:
         '''
         Check all related files listed in the result summary.
         Call `check_file` function for each single check.
         The time complexity is omega(n^2) for calling n items in the Excel of result summary.
 
+        :param check_final_confirmation: bool for whether checking final confirmation, default to True
+        :param check_highlight_cfp: bool for whether checking highlighting and corresponding cfp, default to True
         :return: A list of results in dict-format. Could be empty list if nothing found.
         '''
 
@@ -808,7 +814,11 @@ class ResultSummary(PdExcel):
         # use iterrows() to iterate each row in DataFrame
         list_results : list[dict, None] = []
         for index, row in self.data_frame_specific.iterrows():
-            list_results.append(self.check_file(req_num=row[RS_REQ_NUM]))
+            list_results.append(self.check_file(
+                req_num=row[RS_REQ_NUM],
+                check_final_confirmation=check_final_confirmation,
+                check_highlight_cfp=check_highlight_cfp
+            ))
 
         cf_results = {
             "results": list_results,

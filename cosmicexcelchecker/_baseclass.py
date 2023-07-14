@@ -69,22 +69,31 @@ class AbstractObf(ABC):
     This will be implemented by classes with concrete methods
     '''
 
+    @staticmethod
     @abstractmethod
-    def __init__(self):
+    def compare(string1: str, string2: str) -> int:
         '''
-        initialization of Obf class
+        compare two strings
+
+        :param string1: string to check obfuscation
+        :param string2: another string to check obfuscation
+        :return: the number of edit distance as integer
         '''
 
         pass
 
     @staticmethod
     @abstractmethod
-    def compare(string: str, base_string: str) -> bool:
+    def similarity(string1: str, string2: str, ratio: float) -> bool:
         '''
-        compare two strings
-        :param string: string to check obfuscation, comparing to the base string
-        :param base_string: base string used for comparison
-        :return: a bool value whether this should count as fuzzy (or not)
-        '''
+        call `compare` function to compare strings
+        compare to ratio and decide whether this count as obfuscation (or not)
 
-        pass
+        **This function does NOT guarantee similarity based on real meaning of word,
+        since this is not semantic segmentation**
+
+        :param string1: string to check obfuscation
+        :param string2: another string to check obfuscation
+        :param ratio: the ratio for counting obfuscation
+        :return: if > ratio return True, count as similar string
+        '''

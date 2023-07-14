@@ -1,6 +1,4 @@
 # Core COSMIC File
-import numpy
-import pandas
 
 from _baseclass import PdExcel
 from typing import Union, Dict, List

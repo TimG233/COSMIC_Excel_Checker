@@ -52,17 +52,6 @@ class CosmicReqExcel(PdExcel):
         else:
             raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for an Excel file")
 
-    @deprecated(version='0.2.0', reason="All files should be Excel and loaded by 'load_excel'; Removed in 0.3.0")
-    def load_csv(self):
-        file_ext = self.path[self.path.rindex('.')]
-
-        if file_ext == '.csv':
-            self.data_frames = pd.read_csv(self.path)
-
-            self.file_format = file_ext
-        else:
-            raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for a csv file")
-
     def print_df(self):
         '''
         Try to print the converted pd.Dataframe to the terminal
@@ -439,15 +428,6 @@ class NonCosmicReqExcel(PdExcel):
         else:
             raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for an Excel file")
 
-    @deprecated(version='0.2.0', reason="All files should be Excel and loaded by 'load_excel'; Removed in 0.3.0")
-    def load_csv(self):
-        file_ext = self.path[self.path.rindex('.')]
-
-        if file_ext == '.csv':
-            self.data_frames = pd.read_csv(self.path)
-        else:
-            raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for a csv file")
-
     def print_df(self):
         '''
         Try to print the converted pd.Dataframe to the terminal
@@ -529,15 +509,6 @@ class ResultSummary(PdExcel):
             self.data_frame_specific = df_specific
         else:
             raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for an Excel file")
-
-    @deprecated(version='0.2.0', reason="All files should be Excel and loaded by 'load_excel'; Removed in 0.3.0")
-    def load_csv(self):
-        file_ext = self.path[self.path.rindex('.')]
-
-        if file_ext == '.csv':
-            self.data_frames = pd.read_csv(self.path, skiprows=range(RS_SKIP_ROWS))
-        else:
-            raise IncorrectFileTypeException(f"{self.path} is not a valid relative file path for a csv file")
 
     def set_sheet_name(self, sheet_name: str):
         '''

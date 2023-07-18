@@ -2,8 +2,6 @@
 
 from _baseclass import AbstractObf
 
-import numpy as np
-
 class CheckObf(AbstractObf):
     '''
     Concrete implementation of the AbstractObf class
@@ -46,6 +44,23 @@ class CheckObf(AbstractObf):
                 int(string1[i % len_str1_add1 - 1] != string2[i // len_str1_add1 - 1]))
 
         return dp_mem[-1]  # return the bottom right if in 2D
+
+    @staticmethod
+    def similarity(string1: str, string2: str, ratio: float) -> bool:
+        '''
+        use compare() to generate distance, "(longer - compare()) / longer" to compare ratio
+        If greater than ratio, means similar. Otherwise, it's not
+        Use 2-digit rounding, meaning num >= 0.785 -> 0.79
+
+        :param string1: First string input
+        :param string2: Second string input
+        :param ratio: Given ratio to compare, default to 0.79
+        :return: True if similar, False if not similar by comparing the ratio
+        '''
+
+        ed : int = CheckObf.compare(string1=string1, string2=string2)
+
+        return round((max(len(string1), len(string2)) - ed) / max(len(string1), len(string2)), 2) >= ratio
 
 
 

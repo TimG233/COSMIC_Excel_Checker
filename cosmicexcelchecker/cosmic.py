@@ -602,8 +602,8 @@ class ResultSummary(PdExcel):
 
         return bad_ratio
 
-    def check_file(self, req_num: int, check_final_confirmation: bool = None,
-                   check_highlight_cfp: bool = None) -> dict:
+    def check_file(self, req_num: int, check_final_confirmation: bool = True,
+                   check_highlight_cfp: bool = True) -> dict:
         '''
         check a single file data, comparing to the result summary xlsx
         check req number, req name, CFP total, CFP Total comparison

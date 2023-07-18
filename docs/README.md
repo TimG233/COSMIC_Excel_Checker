@@ -65,10 +65,6 @@
   
   - 读取在指定路径下的excel文件，支持`xlsx`和`xls`两种文件格式。数据加载进来会自动转为`pandas.Dataframe`
 
-- **弃置** ~~方法 `load_csv() -> None`~~
-  
-  - 读取在指定路径下的csv文件。数据加载进来会自动转为`pandas.Dataframe`
-
 - **方法 `print_df() -> None`**
   
   - 打印加载进来的每一页Excel表格到终端。格式为`pandas.Dataframe`的格式
@@ -119,10 +115,6 @@
   
   - 读取在指定路径下的excel文件，支持`xlsx`和`xls`两种文件格式。数据加载进来会自动转为`pandas.Dataframe`
 
-- **弃置** ~~方法 `load_csv() -> None`~~
-  
-  - 读取在指定路径下的csv文件。数据加载进来会自动转为`pandas.Dataframe`
-
 - **方法 `set_sheet_name(sheet_name: str) -> None`**
   
   - 设置需求汇总表中想要处理sheet名称，因为需求汇总表里可能有很多个小汇总表。**当您已经实例化此类后并想处理另一个小汇总表则可以通过这种方法设置**
@@ -139,11 +131,15 @@
   
   - 检查需求汇总表里指定的页（sheet）的Cosmic送审工作量和Cosmic送审功能点之间的关系，并返回一个不符合**0.79**比例的所有条目的列表。这个比例可以手动设置。
 
-- **方法 `check_file(req_num: int) -> dict`**
+- **方法 `check_file(req_num: int, check_final_confirmation: bool = True, check_highlight_cfp: bool = True) -> dict`**
   
   - 检查需求汇总表里指定的页中的一个条目（行）和它所对应的文件夹。返回相应结果。
   
   - **`req_num`**: 该需求序号
+  
+  - **`check_final_confirmation`**: 是否检查结算评估确认表相关信息
+  
+  - **`check_highlight_cfp`**: 是否检查子过程描述高亮和对应cfp点关系是否正确
   
   - 检查的项为：
     
@@ -165,7 +161,7 @@
     
     - 该需求每一个子过程描述填充颜色是否和CFP点匹配（可选择，耗时长）
 
-- **方法 `check_all_files() -> dict[str, list[dict, None]]`**
+- **方法 `check_all_files(check_final_confirmation: bool = True, check_highlight_cfp: bool = True) -> dict[str, list[dict, None]]`**
   
   - 检查需求汇总表里指定的页中的所有条目（行）和它们所各自对应的文件夹。返回一个汇总所有结果和该方法总花费时间的字典。由于此方法的返回较为复杂，以下是返回的汇总字典格式范例
     
@@ -179,3 +175,43 @@
         "time": /* float */
     }
     ```
+  
+  - **`check_final_confirmation`**: 是否检查结算评估确认表相关信息
+  
+  - **`check_highlight_cfp`**: 是否检查子过程描述高亮和对应cfp点关系是否正确
+
+#### 类 `class CheckObf()`
+
+- 此类负责对比判断两个字符串的编辑距离，并且使用比例来判断两个字符串是否为相似字符串。
+  
+  - **请注意：字符串的相近并不能代表二者语义相近**，例：”我每天都喜欢吃早饭”和“我每天都**不**喜欢吃早饭”。二者非常相似（编辑距离仅为1），但语义却截然不同。
+  
+  - **若要判断语义，请考虑训练NLP模型来处理这类问题**
+
+- **静态方法 `compare(string1: str, string2: str) -> int`**
+  
+  - 检查两个给定字符串并且计算出编辑距离，并返回整数距离结果。
+  
+  - **注意**：本方法采取Levenshtein Distance的算法，在动态规划下时间复杂度仍然很高: $O(mn)$ ($m, n$为两个字符串长度)。若对比两个超过2500字符长的字符串，请考虑使用其他方法。
+  
+  - 性能概览 (对比字符为固定长度随机生成，小于1纳秒则显示为0)
+    
+    | 对比字符长度  | 所需时间（秒）       |
+    | ------- | ------------- |
+    | `10`    | `0`           |
+    | `20`    | `0`           |
+    | `50`    | `0.0035936`   |
+    | `100`   | `0.012002`    |
+    | `500`   | `0.2947539`   |
+    | `1000`  | `1.639346`    |
+    | `2500`  | `9.9067159`   |
+    | `5000`  | `24.2416176`  |
+    | `10000` | `104.8854004` |
+
+- **静态方法 `similarity(string1: str, string2: str, ratio: float) -> bool`**
+  
+  - 通过`compare(string1, string2)`方法来获取编辑距离，对比两个字符串中的较长者来对比比率，若大于ratio则判定为相似，返回布尔值。
+    
+    - 对比公式：`(len(string_longer) - edit_distance) / len(string_longer)`
+    
+    - **请注意**：此静态方法使用四舍五入到小数点后2位，所以实际值大于等于`ratio - 0.005`即可判定相似。

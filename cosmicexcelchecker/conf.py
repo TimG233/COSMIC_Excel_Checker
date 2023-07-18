@@ -79,3 +79,117 @@ SR_AC_FINAL_NUM = '最终结果\n（人天）'
 
 # Analytics confirmation (cosmic) final result (days)'s limitation, default to 3.4
 SR_AC_FINAL_NUM_LIMIT = 3.4
+
+
+# allow manually set config
+def set_config(config: dict) -> None:
+    '''
+    Pass in a config dictionaries with {"conf name": value} to change the default value of the config
+
+    :param config: a dict contains configuration
+    :return: None
+    '''
+
+    if 'CFP_SHEET_NAMES' in config and isinstance(config['CFP_SHEET_NAMES'], (list, tuple)):
+        global CFP_SHEET_NAMES
+        CFP_SHEET_NAMES = config['CFP_SHEET_NAMES']
+
+    if 'NONCFP_SHEET_NAMES' in config:
+        global NONCFP_SHEET_NAMES
+        NONCFP_SHEET_NAMES = config['NONCFP_SHEET_NAMES']
+
+    if 'CFP_COLUMN_NAME' in config:
+        global CFP_COLUMN_NAME
+        CFP_COLUMN_NAME = config['CFP_COLUMN_NAME']
+
+    if 'SUB_PROCESS_NAME' in config:
+        global SUB_PROCESS_NAME
+        SUB_PROCESS_NAME = config['SUB_PROCESS_NAME']
+
+    if 'RS_SKIP_ROWS' in config:
+        global RS_SKIP_ROWS
+        RS_SKIP_ROWS = config['RS_SKIP_ROWS']
+
+    if 'Workload_CFP_Ratio' in config:
+        global Workload_CFP_Ratio
+        Workload_CFP_Ratio = config['Workload_CFP_Ratio']
+
+    if 'RS_WORKLOAD_NAME' in config:
+        global RS_WORKLOAD_NAME
+        RS_WORKLOAD_NAME = config['RS_WORKLOAD_NAME']
+
+    if 'RS_TOTAL_CFP_NAME' in config:
+        global RS_TOTAL_CFP_NAME
+        RS_TOTAL_CFP_NAME = config['RS_TOTAL_CFP_NAME']
+
+    if 'RS_REQ_NUM' in config:
+        global RS_REQ_NUM
+        RS_REQ_NUM = config['RS_REQ_NUM']
+
+    if 'RS_REQ_NAME' in config:
+        global RS_REQ_NAME
+        RS_REQ_NAME = config['RS_REQ_NAME']
+
+    if 'RS_QLF_COSMIC' in config:
+        global RS_QLF_COSMIC
+        RS_QLF_COSMIC = config['RS_QLF_COSMIC']
+
+    if 'SR_COSMIC_REQ_NAME' in config:
+        global SR_COSMIC_REQ_NAME
+        SR_COSMIC_REQ_NAME = config['SR_COSMIC_REQ_NAME']
+
+    if 'SR_NONCOSMIC_REQ_NAME' in config:
+        global SR_NONCOSMIC_REQ_NAME
+        SR_NONCOSMIC_REQ_NAME = config['SR_NONCOSMIC_REQ_NAME']
+
+    if 'COEFFICIENT_SHEET_NAME' in config:
+        global COEFFICIENT_SHEET_NAME
+        COEFFICIENT_SHEET_NAME = config['COEFFICIENT_SHEET_NAME']
+
+    if 'COEFFICIENT_SHEET_DATA_COL_NAME' in config:
+        global COEFFICIENT_SHEET_DATA_COL_NAME
+        COEFFICIENT_SHEET_DATA_COL_NAME = config['COEFFICIENT_SHEET_DATA_COL_NAME']
+
+    if 'SR_SUBFOLDER_NAME' in config:
+        global SR_SUBFOLDER_NAME
+        SR_SUBFOLDER_NAME = config['SR_SUBFOLDER_NAME']
+
+    if 'SR_COSMIC_FILE_PREFIX' in config:
+        global SR_COSMIC_FILE_PREFIX
+        SR_COSMIC_FILE_PREFIX = config['SR_COSMIC_FILE_PREFIX']
+
+    if 'SR_NONCOSMIC_FILE_PREFIX' in config:
+        global SR_NONCOSMIC_FILE_PREFIX
+        SR_NONCOSMIC_FILE_PREFIX = config['SR_NONCOSMIC_FILE_PREFIX']
+
+    if 'SR_NONCOSMIC_REQ_NUM' in config:
+        global SR_NONCOSMIC_REQ_NUM
+        SR_NONCOSMIC_REQ_NUM = config['SR_NONCOSMIC_REQ_NUM']
+
+    if 'SR_NONCOSMIC_PROJECT_NAME' in config:
+        global SR_NONCOSMIC_PROJECT_NAME
+        SR_NONCOSMIC_PROJECT_NAME = config['SR_NONCOSMIC_PROJECT_NAME']
+
+    if 'SR_FINAL_CONFIRMATION' in config and isinstance(config['SR_FINAL_CONFIRMATION'], (list, tuple)):
+        global SR_FINAL_CONFIRMATION
+        SR_FINAL_CONFIRMATION = config['SR_FINAL_CONFIRMATION']
+
+    if 'SR_AC_REQ_NUM' in config:
+        global SR_AC_REQ_NUM
+        SR_AC_REQ_NUM = config['SR_AC_REQ_NUM ']
+
+    if 'SR_AC_REQ_NAME' in config:
+        global SR_AC_REQ_NAME
+        SR_AC_REQ_NAME = config['SR_AC_REQ_NAME']
+
+    if 'SR_AC_REPORT_NUM' in config:
+        global SR_AC_REPORT_NUM
+        SR_AC_REPORT_NUM = config['SR_AC_REPORT_NUM ']
+
+    if 'SR_AC_FINAL_NUM' in config:
+        global SR_AC_FINAL_NUM
+        SR_AC_FINAL_NUM = config['SR_AC_FINAL_NUM']
+
+    if 'SR_AC_FINAL_NUM_LIMIT' in config:
+        global SR_AC_FINAL_NUM_LIMIT
+        SR_AC_FINAL_NUM_LIMIT = config['SR_AC_FINAL_NUM_LIMIT']

@@ -16,7 +16,7 @@ setup(
     packages=find_packages(),
     keywords=["cosmic", "excel", "CMDI", "checker", "data"],
     classifiers=[
-        "License :: OSI Approved :: GPL-3.0-only"
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
     ],

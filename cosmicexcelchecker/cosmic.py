@@ -1,19 +1,17 @@
 # Core COSMIC File
 
-from _baseclass import PdExcel
+from ._baseclass import PdExcel
 from typing import Union, Dict, List
-from errors import CosmicExcelCheckerException ,IncorrectFileTypeException, RepeatedREQNumException, \
+from .errors import CosmicExcelCheckerException ,IncorrectFileTypeException, RepeatedREQNumException, \
     SheetNotFoundException, UnknownREQNumException
 from tabulate import tabulate
-from conf import CFP_SHEET_NAMES ,CFP_COLUMN_NAME, SUB_PROCESS_NAME, RS_SKIP_ROWS, RS_TOTAL_CFP_NAME, \
+from .conf import CFP_SHEET_NAMES ,CFP_COLUMN_NAME, SUB_PROCESS_NAME, RS_SKIP_ROWS, RS_TOTAL_CFP_NAME, \
     RS_WORKLOAD_NAME, RS_REQ_NUM, RS_REQ_NAME, SR_COSMIC_REQ_NAME,  SR_NONCOSMIC_REQ_NAME, SR_SUBFOLDER_NAME, \
     SR_COSMIC_FILE_PREFIX, SR_NONCOSMIC_FILE_PREFIX, RS_QLF_COSMIC, COEFFICIENT_SHEET_NAME, \
     COEFFICIENT_SHEET_DATA_COL_NAME, NONCFP_SHEET_NAMES, SR_NONCOSMIC_PROJECT_NAME, SR_NONCOSMIC_REQ_NUM, \
     SR_AC_REPORT_NUM, SR_AC_FINAL_NUM, SR_FINAL_CONFIRMATION, SR_AC_REQ_NUM, SR_AC_REQ_NAME, SR_AC_FINAL_NUM_LIMIT
 
-from find import FindExcels
-
-from deprecated import deprecated
+from .find import FindExcels
 
 import pandas as pd
 import numpy as np

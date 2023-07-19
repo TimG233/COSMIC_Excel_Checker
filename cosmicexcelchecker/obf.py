@@ -1,6 +1,6 @@
 # script related to obfuscation (fuzzy word)
 
-from _baseclass import AbstractObf
+from ._baseclass import AbstractObf
 
 class CheckObf(AbstractObf):
     '''

@@ -5,7 +5,7 @@ with open('./README.md', 'r', encoding='utf-8') as f:
 
 setup(
     name="cosmicexcelchecker",
-    version="0.2.2b",
+    version="0.2.2",
     license="GPL-3.0-only",
     author="TimG233",
     author_email="gaosh0830@gmail.com",

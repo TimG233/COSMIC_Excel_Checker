@@ -5,7 +5,7 @@ with open('./docs/README.md', 'r', encoding='utf-8') as f:
 
 setup(
     name="cosmicexcelchecker",
-    version="0.2.0",
+    version="0.2.1",
     license="GPL-3.0-only",
     author="TimG233",
     author_email="gaosh0830@gmail.com",
@@ -13,7 +13,10 @@ setup(
     description="A high flexibility package for checking cosmic-related excels under CMDI cosmic standards",
     long_description=long_des,
     long_description_content_type="text/markdown",
-    packages=find_packages(),
+    packages=[
+        "cosmicexcelchecker",
+        "docs",
+    ],
     keywords=["cosmic", "excel", "CMDI", "checker", "data"],
     classifiers=[
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",

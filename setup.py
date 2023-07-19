@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-with open('./docs/README.md', 'r', encoding='utf-8') as f:
+with open('./README.md', 'r', encoding='utf-8') as f:
     long_des = f.read()
 
 setup(
@@ -15,7 +15,6 @@ setup(
     long_description_content_type="text/markdown",
     packages=[
         "cosmicexcelchecker",
-        "docs",
     ],
     keywords=["cosmic", "excel", "CMDI", "checker", "data"],
     classifiers=[

@@ -1,11 +1,11 @@
 # Core COSMIC File
 
-from ._baseclass import PdExcel
+from cosmicexcelchecker._baseclass import PdExcel
 from typing import Union, Dict, List
-from .errors import CosmicExcelCheckerException ,IncorrectFileTypeException, RepeatedREQNumException, \
+from cosmicexcelchecker.errors import CosmicExcelCheckerException ,IncorrectFileTypeException, RepeatedREQNumException, \
     SheetNotFoundException, UnknownREQNumException
 from tabulate import tabulate
-from .conf import CFP_SHEET_NAMES ,CFP_COLUMN_NAME, SUB_PROCESS_NAME, RS_SKIP_ROWS, RS_TOTAL_CFP_NAME, \
+from cosmicexcelchecker.conf import CFP_SHEET_NAMES ,CFP_COLUMN_NAME, SUB_PROCESS_NAME, RS_SKIP_ROWS, RS_TOTAL_CFP_NAME, \
     RS_WORKLOAD_NAME, RS_REQ_NUM, RS_REQ_NAME, SR_COSMIC_REQ_NAME,  SR_NONCOSMIC_REQ_NAME, SR_SUBFOLDER_NAME, \
     SR_COSMIC_FILE_PREFIX, SR_NONCOSMIC_FILE_PREFIX, RS_QLF_COSMIC, COEFFICIENT_SHEET_NAME, \
     COEFFICIENT_SHEET_DATA_COL_NAME, NONCFP_SHEET_NAMES, SR_NONCOSMIC_PROJECT_NAME, SR_NONCOSMIC_REQ_NUM, \
@@ -163,7 +163,6 @@ class CosmicReqExcel(PdExcel):
         if coefficient_sheet is None:
             return None
 
-        # print(coefficient_sheet)
         std_cfp_pts = coefficient_sheet.iloc[1, coefficient_sheet.columns.get_loc(COEFFICIENT_SHEET_DATA_COL_NAME)]
 
         if std_cfp_pts is None or std_cfp_pts == '':

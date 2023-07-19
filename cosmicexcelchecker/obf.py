@@ -1,6 +1,6 @@
 # script related to obfuscation (fuzzy word)
 
-from ._baseclass import AbstractObf
+from cosmicexcelchecker._baseclass import AbstractObf
 
 class CheckObf(AbstractObf):
     '''

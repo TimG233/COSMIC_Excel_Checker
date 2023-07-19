@@ -26,15 +26,6 @@ class PdExcel(ABC):
 
         pass
 
-    @abstractmethod
-    def load_csv(self):
-        '''
-        Load csv plaintext file
-        :return: None
-        '''
-
-        pass
-
 class UnionExcels(ABC):
     '''
     An abstract class designed for finding all Excel files under certain directory

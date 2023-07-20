@@ -196,22 +196,73 @@
   
   - 性能概览 (对比字符为固定长度随机生成，小于1纳秒则显示为0)
     
-    | 对比字符长度  | 所需时间（秒）       |
-    | ------- | ------------- |
-    | `10`    | `0`           |
-    | `20`    | `0`           |
-    | `50`    | `0.0035936`   |
-    | `100`   | `0.012002`    |
-    | `500`   | `0.2947539`   |
-    | `1000`  | `1.639346`    |
-    | `2500`  | `9.9067159`   |
-    | `5000`  | `24.2416176`  |
-    | `10000` | `104.8854004` |
+    | 对比字符长度 | 所需时间（秒）     |
+    | ------ | ----------- |
+    | 10     | 0           |
+    | 20     | 0           |
+    | 50     | 0.0035936   |
+    | 100    | 0.012002    |
+    | 500    | 0.2947539   |
+    | 1000   | 1.639346    |
+    | 2500   | 9.9067159   |
+    | 5000   | 24.2416176  |
+    | 10000  | 104.8854004 |
 
-- **静态方法 `similarity(string1: str, string2: str, ratio: float) -> bool`**
+- **静态方法 `similarity(string1: str, string2: str, ratio: Union[float, None] = None) -> Union[float, bool]`**
   
-  - 通过`compare(string1, string2)`方法来获取编辑距离，对比两个字符串中的较长者来对比比率，若大于ratio则判定为相似，返回布尔值。
+  - 通过`compare(string1, string2)`方法来获取编辑距离，对比两个字符串中的较长者来对比比率，若不提供ratio则返回为浮点数的比率。若提供ratio且编辑距离大于ratio则判定为相似，返回布尔值。
     
     - 对比公式：`(len(string_longer) - edit_distance) / len(string_longer)`
+
+#### 关于Conf
+
+- **方法 `set_config(config: dict) -> None`**
+  
+  - 传入一个字典来修改单个/多个`conf.py`中的固定值。
+  
+  - 示例（添加，更改）
     
-    - **请注意**：此静态方法使用四舍五入到小数点后2位，所以实际值大于等于`ratio - 0.005`即可判定相似。
+    ```py
+    from conf import set_config, SR_FINAL_CONFIRMATION
+    
+    # **注意**：字典dict不允许一个字典中含有多个相同的key
+    set_config(
+        {
+            'CFP_SHEET_NAMES': ['新表名1', '新表名2'],  # 移除列表类型旧值，填入新值
+            'SR_FINAL_CONFIRMATION': SR_FINAL_CONFIRMATION.extend(['额外名称1', '额外名称2']),  # 添加多个额外值， 添加单值也可用.append(<value>)
+            'CFP_COLUMN_NAME': 'CFP点数'  # 修改字符串类型固定值
+            'WORKLOAD_CFP_RATIO': 0.85  # 修改整数/浮点数类型固定值
+        }
+    )
+    ```
+  
+  - 具体固定值详解如下（传入值需要严格按照各个固定值类型来传入）
+    
+    | 固定值名称                             | 类型     | 默认值                               | 注释                                           |
+    | --------------------------------- | ------ | --------------------------------- | -------------------------------------------- |
+    | `CFP_SHEET_NAMES`                 | `list` | `['功能点拆分表', 'COSMIC软件评估标准模板']`    | cosmic功能点拆分表的sheet名称                         |
+    | `NONCFP_SHEET_NAMES`              | `str`  | `非COSMIC评估工作量填写说明`                | 非cosmic评估表详细信息sheet名称                        |
+    | `CFP_COLUMN_NAME`                 | `str`  | `CFP`                             | cosmic功能拆分表中CFP数字点数列名称                       |
+    | `SUB_PROCESS_NAME`                | `str`  | `子过程描述`                           | cosmic功能拆分表中子过程描述列名称                         |
+    | `RS_SKIP_ROWS`                    | `int`  | `9`                               | 汇总表格中跳过录入前n行 (跳过表头的一些总结数据，只读每一个需求相关的名头及各行数据) |
+    | `Workload_CFP_Ratio`              | `int`  | `0.79`                            | 送审工作量和CFP的比率，一般默认0.79标准                      |
+    | `RS_WORKLOAD_NAME`                | `str`  | `cosmic送审工作量`                     | 汇总表格中cosmic送审工作量列的名称                         |
+    | `RS_TOTAL_CFP_NAME`               | `str`  | `cosmic送审功能点`                     | 汇总表格中cosmic送审功能点列名称                          |
+    | `RS_REQ_NUM`                      | `str`  | `需求序号`                            | 汇总表格中需求序号列名称                                 |
+    | `RS_REQ_NAME`                     | `str`  | `实施需求名称`                          | 汇总表格中实施需求名称列名称                               |
+    | `RS_QLF_COSMIC`                   | `str`  | `是否适用cosmic`                      | 汇总表格中是否适用cosmic列名称（是/否/混合型）                  |
+    | `SR_COSMIC_REQ_NAME`              | `str`  | `OPEX-需求名称`                       | cosmic功能拆分表中需求名称列名称                          |
+    | `SR_NONCOSMIC_REQ_NAME`           | `str`  | `需求名称`                            | 非cosmic功能拆分表中需求名称列名称                         |
+    | `COEFFICIENT_SHEET_NAME`          | `str`  | `系数表`                             | cosmic功能拆分表中系数表sheet名称                       |
+    | `COEFFICIENT_SHEET_DATA_COL_NAME` | `str`  | `数值`                              | cosmic功能拆分表中系数表sheet里数值列名称                   |
+    | `SR_SUBFOLDER_NAME`               | `str`  | `COSMIC评估发起`                      | 单个需求所在的父级文件夹名称                               |
+    | `SR_COSMIC_FILE_PREFIX`           | `str`  | `附件5`                             | 单个需求cosmic统计表文件名开头                           |
+    | `SR_NONCOSMIC_FILE_PREFIX`        | `str`  | `附件4`                             | 单个需求非cosmic统计表文件名开头                          |
+    | `SR_NONCOSMIC_REQ_NUM`            | `str`  | `需求序号`                            | 非cosmic需求文件里需求序号列名称                          |
+    | `SR_NONCOSMIC_PROJECT_NAME`       | `str`  | `项目名称`                            | 非cosmic需求文件里项目名称列名称                          |
+    | `SR_FINAL_CONFIRMATION`           | `list` | `['结算评估确认表', '结论评估确认表', '结论认同表']` | cosmic需求文件中结算评估确认表sheet名称                    |
+    | `SR_AC_REQ_NUM`                   | `str`  | `需求工单号`                           | cosmic需求文件中结算评估确认表里的需求工单号列名称                 |
+    | `SR_AC_REQ_NAME`                  | `str`  | `需求名称`                            | cosmic需求文件中结算评估确认表里的需求名称列名称                  |
+    | `SR_AC_REPORT_NUM`                | `str`  | `上报工作量\n（人天）`                     | cosmic需求文件中结算评估确认表里的上报工作量列名称                 |
+    | `SR_AC_FINAL_NUM`                 | `str`  | `最终结果\n（人天）`                      | cosmic需求文件中结算评估确认表里的最终结果列名称                  |
+    | `SR_AC_FINAL_NUM_LIMIT`           | `int`  | `3.4`                             | cosmic需求文件中结算评估确认表最终人天上限                     |

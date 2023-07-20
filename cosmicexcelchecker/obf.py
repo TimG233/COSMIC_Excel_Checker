@@ -2,6 +2,8 @@
 
 from cosmicexcelchecker._baseclass import AbstractObf
 
+from typing import Union
+
 class CheckObf(AbstractObf):
     '''
     Concrete implementation of the AbstractObf class
@@ -46,21 +48,26 @@ class CheckObf(AbstractObf):
         return dp_mem[-1]  # return the bottom right if in 2D
 
     @staticmethod
-    def similarity(string1: str, string2: str, ratio: float) -> bool:
+    def similarity(string1: str, string2: str, ratio: Union[float, None] = None) -> Union[float, bool]:
         '''
-        use compare() to generate distance, "(longer - compare()) / longer" to compare ratio
+        use compare() to generate distance, "(longer - compare()) / longer" to calculate ratio
+        If no ratio provided, return ratio
+
+        If ratio provided,
         If greater than ratio, means similar. Otherwise, it's not
-        Use 2-digit rounding, meaning num >= 0.785 -> 0.79
 
         :param string1: First string input
         :param string2: Second string input
-        :param ratio: Given ratio to compare, default to 0.79
-        :return: True if similar, False if not similar by comparing the ratio
+        :param ratio: Given ratio to compare
+        :return: similar float ratio if no ratio param. Otherwise, True if similar, False if not similar by comparing the ratio
         '''
 
         ed : int = CheckObf.compare(string1=string1, string2=string2)
 
-        return round((max(len(string1), len(string2)) - ed) / max(len(string1), len(string2)), 2) >= ratio
+        if ratio:
+            return (max(len(string1), len(string2)) - ed) / max(len(string1), len(string2)) >= ratio
+
+        return 1 - ed / max(len(string1), len(string2))
 
 
 
